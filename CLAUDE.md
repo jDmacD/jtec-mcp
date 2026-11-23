@@ -141,6 +141,11 @@ In order of preference:
      in a comment at the top of `client.py`. Regenerate, don't hand-edit.
 3. **A hand-written httpx client** from the service's docs or source.
 
+Known specs: slskd serves `/swagger/v0/swagger.json` when started with
+`SLSKD_SWAGGER=true` (it's off by default; no API key needed to read it).
+Aurral (3.0.x) publishes none; its routes are in the backend's
+`routes/library/handlers/*.ts`.
+
 Whatever the client, keep it behind `<service>/client.py` so tools don't
 depend on which option was used, and keep heavy optional libraries (the Azure
 SDKs especially) in a per-service extra if they would bloat the package.
