@@ -20,6 +20,11 @@ src/jtec_mcp/
   aurral/client.py  async httpx client for Aurral's /api/library (no OpenAPI spec)
   aurral/tools.py   album inspection, import and the steps around it
   metadata/         Lidarr metadata server (MusicBrainz mirror): editions, track lists
+  arr/              Servarr apps (Sonarr, Radarr, ...): one client, per-app differences in APPS;
+                    one set of arr_* tools over every configured app
+  qbittorrent/      WebAPI client (Bearer key); swarm.py: pure torrent summary + stall diagnosis
+  jellyfin/         sessions; playback.py: pure direct-play prediction per client profile
+  bazarr/           missing subtitles and unmanaged (profile-less) items
   errors.py         ToolError + check(): service error messages reach the agent
 secretspec.toml     secrets the server reads (all optional)
 flake.nix           uv2nix package + dev shell; wraps the server in `secretspec run`
@@ -159,6 +164,11 @@ depend on which option was used, and keep heavy optional libraries (the Azure
 SDKs especially) in a per-service extra if they would bloat the package.
 
 ## Adding a service
+
+Most services register one client with their own `register(server, client)`
+in `_register()`. A family that shares tools (the Servarr apps) registers once
+with every configured member, and may take another service's client too
+(`arr_queue` joins qBittorrent).
 
 1. `src/jtec_mcp/<service>/client.py`: the client (see above); an httpx
    client's constructor takes `(ServiceConfig, api_key, transport=None)`.

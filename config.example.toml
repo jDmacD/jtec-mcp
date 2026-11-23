@@ -14,3 +14,26 @@ url = "https://music.example.lan"   # the secret is the bare API key: no key_fie
 [services.metadata]
 # Lidarr's public MusicBrainz mirror; no key needed.
 url = "https://api.lidarr.audio/api/v0.4"
+
+# Servarr apps: one set of arr_* tools covers every app configured here.
+# Service names must be the app names; each secret is the bare API key.
+[services.sonarr]
+url = "https://sonarr.example.lan"
+
+[services.radarr]
+url = "https://radarr.example.lan"
+
+# [services.lidarr], [services.prowlarr], [services.whisparr] and
+# [services.chaptarr] (Readarr-compatible) work the same way.
+
+[services.qbittorrent]
+# The WebAPI key (qBittorrent 5.2+). With qBittorrent configured, arr_queue
+# shows each download's torrent state and diagnoses stalled swarms.
+url = "https://qbittorrent.example.lan"
+
+[services.jellyfin]
+url = "https://jellyfin.example.lan"
+key_field = "apiKey"   # if the secret is JSON; omit for a bare key
+
+[services.bazarr]
+url = "https://bazarr.example.lan"
