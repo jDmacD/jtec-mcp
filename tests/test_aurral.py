@@ -7,6 +7,7 @@ from mcp.server.mcpserver import MCPServer
 from jtec_mcp.aurral import tools as aurral_tools
 from jtec_mcp.aurral.client import AurralClient, album_ref
 from jtec_mcp.config import ServiceConfig
+from jtec_mcp.errors import ToolError
 
 SVC = ServiceConfig("aurral", "https://aurral.test", "AURRAL")
 RG = "1346c819-d57b-4c38-aa55-1e599dfc3645"
@@ -22,7 +23,7 @@ def test_album_ref_accepts_id_mbid_and_url():
     assert album_ref(RG.upper()) == RG
     assert album_ref(f"https://music.example.lan/album/{RG}") == RG
     assert album_ref("https://music.example.lan/library/albums/42/") == "42"
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolError):
         album_ref("not an album")
 
 
@@ -33,7 +34,7 @@ class FakeAurral:
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
-        p, m = request.url.path.removeprefix("/api/library"), request.method
+        p, m = request.url.path.removeprefix("/api").removeprefix("/library"), request.method
         album = {"id": 1, "artistId": 7, "title": "Robot Face", "releaseGroupMbid": RG}
         if m == "GET" and p in (f"/albums/{RG}", "/albums/1"):
             return httpx.Response(200, json=album)
@@ -148,7 +149,7 @@ async def test_import_runs_waits_and_reports_leftovers(monkeypatch):
         "monitor": "none",
         "fillTags": True,
     }
-    assert out["status"] == "complete" and out["hardlinked"] == 1
+    assert out["status"] == "complete" and "hardlinked" not in out
     assert out["targets"] == ["Artist/Album"]
     assert out["not_imported"] == [{"source": "b.flac", "status": "skipped", "reason": "duplicate"}]
 
@@ -168,3 +169,53 @@ async def test_set_monitored_resolves_album():
     await _call(await _server(fake), "aurral_set_monitored", album=RG, monitored=False)
     (put,) = fake.find("PUT", "/albums/1")
     assert json.loads(put.content) == {"monitored": False}
+
+
+@pytest.mark.anyio
+async def test_errors_carry_aurrals_message():
+    def handler(request):
+        return httpx.Response(404, json={"error": "Album not found"})
+
+    server = MCPServer("t")
+    aurral_tools.register(server, AurralClient(SVC, "k", transport=httpx.MockTransport(handler)))
+    # Called directly the server raises; over MCP the client gets the message
+    # as an error result.
+    with pytest.raises(ToolError, match="404 Album not found"):
+        await server.call_tool("aurral_album", {"album": RG})
+
+
+@pytest.mark.anyio
+async def test_search_summarises_artists_and_albums():
+    def handler(request):
+        assert request.url.path == "/api/search/unified"
+        return httpx.Response(
+            200,
+            json={
+                "artists": [{"name": "E", "id": "a1", "hasMbid": True, "inLibrary": False}],
+                "albums": [
+                    {
+                        "title": "E",
+                        "artistName": "E",
+                        "id": RG,
+                        "primaryType": "Album",
+                        "inLibrary": True,
+                        "libraryAlbumId": 9,
+                    }
+                ],
+            },
+        )
+
+    server = MCPServer("t")
+    aurral_tools.register(server, AurralClient(SVC, "k", transport=httpx.MockTransport(handler)))
+    out = await _call(server, "aurral_search", query="e")
+    assert out["artists"][0]["mbid"] == "a1"
+    assert out["albums"][0] == {
+        "title": "E",
+        "artist": "E",
+        "release_group": RG,
+        "type": "Album",
+        "secondary": None,
+        "date": None,
+        "in_library": True,
+        "library_id": 9,
+    }

@@ -10,6 +10,7 @@ from urllib.parse import quote
 import httpx
 
 from jtec_mcp.config import ServiceConfig
+from jtec_mcp.errors import check
 
 
 class SlskdClient:
@@ -29,8 +30,7 @@ class SlskdClient:
 
     async def _get(self, path: str, **params):
         r = await self._http.get(path, params=params or None)
-        r.raise_for_status()
-        return r.json()
+        return check(r, "slskd").json()
 
     async def search(
         self, text: str, timeout_s: float = 90, poll_s: float = 2
@@ -38,7 +38,7 @@ class SlskdClient:
         """Start a search, wait for it to finish, return (id, responses, completed)."""
         search_id = str(uuid.uuid4())
         r = await self._http.post("/searches", json={"id": search_id, "searchText": text})
-        r.raise_for_status()
+        check(r, "slskd")
         deadline = time.monotonic() + timeout_s
         completed = False
         while time.monotonic() < deadline:
@@ -67,8 +67,7 @@ class SlskdClient:
             f"/transfers/downloads/{quote(username, safe='')}",
             json=[{"filename": f["filename"], "size": f["size"]} for f in files],
         )
-        r.raise_for_status()
-        return r.json()
+        return check(r, "slskd").json()
 
     async def remove_download(self, username: str, transfer_id: str) -> None:
         """Remove a transfer entry. Cancels it first if it is still running."""
@@ -76,16 +75,16 @@ class SlskdClient:
             f"/transfers/downloads/{quote(username, safe='')}/{transfer_id}",
             params={"remove": "true"},
         )
-        r.raise_for_status()
+        check(r, "slskd")
 
     async def send_message(self, username: str, message: str) -> None:
         # The body is a bare JSON string.
         r = await self._http.post(f"/conversations/{quote(username, safe='')}", json=message)
-        r.raise_for_status()
+        check(r, "slskd")
 
     async def acknowledge(self, username: str) -> None:
         r = await self._http.put(f"/conversations/{quote(username, safe='')}")
-        r.raise_for_status()
+        check(r, "slskd")
 
     async def conversations(self) -> list[dict]:
         return await self._get("/conversations")

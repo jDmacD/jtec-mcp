@@ -8,6 +8,7 @@ from collections import Counter
 from mcp.server.mcpserver import MCPServer
 from mcp_types import ToolAnnotations
 
+from jtec_mcp.errors import ToolError
 from jtec_mcp.slskd.client import SlskdClient
 from jtec_mcp.slskd.ranking import Folder, folders_from_responses, rank
 
@@ -171,19 +172,19 @@ def register(server: MCPServer, client: SlskdClient) -> None:
                 if f.username == username and f.path == folder
             ]
             if not matches:
-                raise ValueError(f"no folder {folder!r} from {username!r} in search {search_id}")
+                raise ToolError(f"no folder {folder!r} from {username!r} in search {search_id}")
             chosen = matches[0]
         elif n is not None:
             ranked = searches.get(search_id)
             if ranked is None:
-                raise ValueError(
+                raise ToolError(
                     f"search {search_id} is not cached here; pass username and folder instead"
                 )
             if not 1 <= n <= len(ranked):
-                raise ValueError(f"n must be between 1 and {len(ranked)}")
+                raise ToolError(f"n must be between 1 and {len(ranked)}")
             chosen = ranked[n - 1]
         else:
-            raise ValueError("pass n, or username and folder")
+            raise ToolError("pass n, or username and folder")
 
         files = chosen.audio if audio_only else chosen.files
         result = await client.enqueue(chosen.username, files)
