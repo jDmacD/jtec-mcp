@@ -199,3 +199,64 @@ async def test_conversations_last_messages_zero_lists_none():
     server = await _tools(Chats())
     (chat,) = await _call(server, "slskd_conversations", last_messages=0)
     assert chat["messages"] == []
+
+
+@pytest.mark.anyio
+async def test_downloads_wait_until_finished(monkeypatch):
+    import jtec_mcp.slskd.tools as t
+
+    async def no_sleep(*_):
+        return None
+
+    monkeypatch.setattr(t.asyncio, "sleep", no_sleep)
+
+    def snapshot(state):
+        return [
+            {
+                "username": "peer",
+                "directories": [
+                    {
+                        "directory": "m\\\\Artist\\\\Album",
+                        "files": [
+                            {
+                                "id": "1",
+                                "filename": "m\\\\Artist\\\\Album\\\\01.flac",
+                                "state": state,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+
+    class Progress(FakeSlskd):
+        polls = 0
+
+        def __call__(self, request):
+            if request.url.path.startswith("/api/v0/transfers/downloads"):
+                Progress.polls += 1
+                state = "Completed, Succeeded" if Progress.polls >= 3 else "InProgress"
+                data = snapshot(state)
+                return httpx.Response(
+                    200, json=data[0] if request.url.path.endswith("/peer") else data
+                )
+            return super().__call__(request)
+
+    server = await _tools(Progress())
+    out = await _call(server, "slskd_downloads", username="peer", wait_s=600, poll_s=1)
+    assert out["finished"] and Progress.polls == 3
+    (folder,) = out["folders"]
+    assert folder["local_folder"] == "Album" and folder["states"] == {"Completed, Succeeded": 1}
+
+
+@pytest.mark.anyio
+async def test_downloads_without_wait_keeps_list_shape():
+    server = await _tools(FakeSlskd([]))
+    assert await _call(server, "slskd_downloads") == []
+
+
+@pytest.mark.anyio
+async def test_downloads_wait_returns_at_once_when_nothing_listed():
+    server = await _tools(FakeSlskd([]))
+    out = await _call(server, "slskd_downloads", wait_s=600)
+    assert out == {"finished": True, "waited_s": 0, "folders": []}
