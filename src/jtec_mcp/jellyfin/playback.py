@@ -23,7 +23,10 @@ class Profile:
     name: str
     max_bitrate: int
     video: frozenset[str]
-    video_ranges: frozenset[str]
+    # Range types this display can't show at all. Every other Dolby Vision
+    # type (WithHDR10, WithHLG, WithSDR, WithEL, WithHDR10Plus, ...) carries a
+    # base layer the display plays without DV.
+    video_ranges_unsupported: frozenset[str]
     audio_ok: frozenset[str]
     audio_transcode: frozenset[str]
     notes: tuple[str, ...] = field(default_factory=tuple)
@@ -35,18 +38,7 @@ PROFILES = {
         "AC3/E-AC3 soundbar",
         max_bitrate=40_000_000,
         video=frozenset({"h264", "hevc", "vp9"}),
-        video_ranges=frozenset(
-            {
-                "SDR",
-                "Unknown",
-                "HDR10",
-                "HDR10Plus",
-                "HLG",
-                "DOVIWithHDR10",
-                "DOVIWithHLG",
-                "DOVIWithSDR",
-            }
-        ),
+        video_ranges_unsupported=frozenset({"DOVI", "DOVIInvalid"}),
         audio_ok=frozenset({"ac3", "eac3", "aac", "mp3", "opus", "vorbis", "flac"}),
         audio_transcode=frozenset({"truehd"}),
         notes=(
@@ -92,6 +84,25 @@ def describe_stream(s: dict) -> dict:
     return {k: v for k, v in out.items() if v not in (None, False)}
 
 
+def _subtitles(streams: list[dict], audio: dict | None) -> dict:
+    """Subtitles worth listing: the audio's language, plus any forced, default or
+    external track. A remux can carry 50+ PGS tracks; the rest are counted."""
+    lang = (audio or {}).get("Language")
+    subs = [s for s in streams if s.get("Type") == "Subtitle"]
+    keep = [
+        s
+        for s in subs
+        if s.get("Language") == lang
+        or s.get("IsForced")
+        or s.get("IsDefault")
+        or s.get("IsExternal")
+    ]
+    return {
+        "subtitles": [describe_stream(s) for s in keep],
+        "other_subtitles": len(subs) - len(keep) or None,
+    }
+
+
 def check(source: dict, profile: Profile, subtitle_mode: str = "Default") -> dict:
     """Predict playback of one media source (an item's MediaSources[n])."""
     streams = source.get("MediaStreams") or []
@@ -127,7 +138,7 @@ def check(source: dict, profile: Profile, subtitle_mode: str = "Default") -> dic
                 {"reason": "VideoCodecNotSupported", "detail": codec, "basis": "assumed"}
             )
         rng = video.get("VideoRangeType") or "SDR"
-        if rng not in profile.video_ranges:
+        if rng in profile.video_ranges_unsupported:
             transcode.append(
                 {
                     "reason": "VideoRangeTypeNotSupported",
@@ -191,6 +202,6 @@ def check(source: dict, profile: Profile, subtitle_mode: str = "Default") -> dic
             "audio_default": describe_stream(audio) if audio else None,
             "subtitle_default": describe_stream(sub) if sub else None,
             "audio_tracks": [describe_stream(s) for s in streams if s.get("Type") == "Audio"],
-            "subtitles": [describe_stream(s) for s in streams if s.get("Type") == "Subtitle"],
+            **_subtitles(streams, audio),
         },
     }

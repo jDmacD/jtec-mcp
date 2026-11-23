@@ -110,14 +110,17 @@ def register(server: MCPServer, client: JellyfinClient) -> None:
         Find the item by `query` (title search) or `item_id`. For a series, give
         `episode` as `S01E02`, or `S01` to check a whole season (one line per
         episode). The check applies the client profile's limits (`tv`: 40 Mb/s
-        bitrate cap, HEVC/H.264/VP9, HDR10/HLG but no Dolby Vision-only video,
+        bitrate cap, HEVC/H.264/VP9, HDR10/HLG; Dolby Vision plays from its base
+        layer, so only profile 5-style DV with no fallback transcodes;
         AC3/E-AC3 passthrough, TrueHD transcodes) to the default audio and
         subtitle streams, as a user with subtitle mode "Default" gets them.
         It reports the `verdict`; each `transcode` reason (named as Jellyfin
         names them, each marked `observed` or `assumed`); `risks`, e.g. an
         embedded text subtitle whose first use makes Jellyfin read the whole
         file; and `tips`, e.g. an AC3/E-AC3 track that would avoid the audio
-        transcode. The source's audio and subtitle tracks are listed too.
+        transcode. The source's audio tracks are listed, and its subtitles in
+        the audio's language (plus forced, default and external ones); the
+        rest are counted in `other_subtitles`.
         """
         profile = playback.PROFILES.get(client_profile)
         if profile is None:
