@@ -8,6 +8,7 @@ import re
 import httpx
 
 from jtec_mcp.config import ServiceConfig
+from jtec_mcp.errors import ToolError, check
 
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
 
@@ -22,7 +23,7 @@ def album_ref(album: str | int) -> str:
     tail = text.rstrip("/").rsplit("/", 1)[-1]
     if tail.isdigit():
         return tail
-    raise ValueError(f"not an album id, MBID or album URL: {album!r}")
+    raise ToolError(f"not an album id, MBID or album URL: {album!r}")
 
 
 class AurralClient:
@@ -33,7 +34,7 @@ class AurralClient:
         transport: httpx.AsyncBaseTransport | None = None,
     ):
         self._http = httpx.AsyncClient(
-            base_url=f"{service.url}/api/library",
+            base_url=f"{service.url}/api",
             headers={"X-Api-Key": api_key},
             verify=service.verify_tls,
             timeout=60,
@@ -41,15 +42,15 @@ class AurralClient:
         )
 
     async def _request(self, method: str, path: str, **kw):
-        r = await self._http.request(method, path, **kw)
-        if r.status_code >= 400:
-            try:
-                detail = r.json()
-                detail = detail.get("message") or detail.get("error") or detail
-            except ValueError:
-                detail = r.text[:200]
-            raise RuntimeError(f"Aurral {method} {path}: {r.status_code} {detail}")
+        """Library API call; `path` is relative to /api/library."""
+        return await self._api(method, f"/library{path}", **kw)
+
+    async def _api(self, method: str, path: str, **kw):
+        r = check(await self._http.request(method, path, **kw), "Aurral")
         return r.json() if r.content else None
+
+    async def search(self, query: str, limit: int = 10) -> dict:
+        return await self._api("GET", "/search/unified", params={"q": query, "limit": str(limit)})
 
     async def album(self, ref: str) -> dict:
         return await self._request("GET", f"/albums/{ref}")

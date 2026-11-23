@@ -19,15 +19,18 @@ Results are summarised; ask for detail with the tools' optional arguments.
 
 
 def _services() -> dict:
-    """Service name -> (client class, register function)."""
+    """Service name -> (client class, register function, needs an API key)."""
     from jtec_mcp.aurral.client import AurralClient
     from jtec_mcp.aurral.tools import register as register_aurral
+    from jtec_mcp.metadata.client import MetadataClient
+    from jtec_mcp.metadata.tools import register as register_metadata
     from jtec_mcp.slskd.client import SlskdClient
     from jtec_mcp.slskd.tools import register as register_slskd
 
     return {
-        "slskd": (SlskdClient, register_slskd),
-        "aurral": (AurralClient, register_aurral),
+        "slskd": (SlskdClient, register_slskd, True),
+        "aurral": (AurralClient, register_aurral, True),
+        "metadata": (MetadataClient, register_metadata, False),
     }
 
 
@@ -35,12 +38,12 @@ def build(services: dict[str, config.ServiceConfig] | None = None) -> MCPServer:
     services = config.load() if services is None else services
     server = MCPServer("jtec-mcp", instructions=INSTRUCTIONS)
 
-    for name, (client_cls, register) in _services().items():
+    for name, (client_cls, register, needs_key) in _services().items():
         svc = services.get(name)
         if svc is None:
             continue
         key = svc.api_key()
-        if not key:
+        if needs_key and not key:
             log.warning("%s configured but %s is not set; skipping", name, svc.secret_env)
             continue
         register(server, client_cls(svc, key))

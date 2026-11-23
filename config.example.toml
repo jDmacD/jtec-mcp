@@ -10,3 +10,7 @@ key_field = "SLSKD_API_KEY"   # the variable holds JSON; omit for a bare key
 
 [services.aurral]
 url = "https://music.example.lan"   # the secret is the bare API key: no key_field
+
+[services.metadata]
+# Lidarr's public MusicBrainz mirror; no key needed.
+url = "https://api.lidarr.audio/api/v0.4"

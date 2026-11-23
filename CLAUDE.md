@@ -19,6 +19,8 @@ src/jtec_mcp/
   slskd/tools.py    the MCP tools
   aurral/client.py  async httpx client for Aurral's /api/library (no OpenAPI spec)
   aurral/tools.py   album inspection, import and the steps around it
+  metadata/         Lidarr metadata server (MusicBrainz mirror): editions, track lists
+  errors.py         ToolError + check(): service error messages reach the agent
 secretspec.toml     secrets the server reads (all optional)
 flake.nix           uv2nix package + dev shell; wraps the server in `secretspec run`
 ```
@@ -57,6 +59,12 @@ The SDK changed a lot from 1.x; don't write from 1.x memory.
   item, and structured output adds a duplicate `{"result": ...}` copy.
 
 ## Tool design rules
+
+- **Raise `ToolError`** (from `jtec_mcp.errors`) for anything the agent
+  should read; use `check(response, "<service>")` on HTTP responses. Any
+  other exception reaches the client as a bare "Error executing tool".
+- **Keyless services** (public APIs) are registered with `needs_key=False`
+  in `_services()`.
 
 - **One tool per task step**, not per endpoint. Do the polling, paging,
   grouping and ranking in the server; return only what the agent needs to

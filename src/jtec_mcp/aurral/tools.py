@@ -13,6 +13,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp_types import ToolAnnotations
 
 from jtec_mcp.aurral.client import AurralClient, album_ref
+from jtec_mcp.errors import ToolError
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 CHANGE = ToolAnnotations(
@@ -38,7 +39,7 @@ async def _wait_refresh(client: AurralClient, job_id, timeout_s: float, poll_s: 
     while time.monotonic() < deadline:
         try:
             status = (await client.refresh_status(job_id)).get("status", "unknown")
-        except RuntimeError:
+        except ToolError:
             return "completed"  # finished and purged from the queue
         if status in ("completed", "failed"):
             return status
@@ -49,6 +50,44 @@ async def _wait_refresh(client: AurralClient, job_id, timeout_s: float, poll_s: 
 def register(server: MCPServer, client: AurralClient) -> None:
     async def resolve(album: str) -> dict:
         return await client.album(album_ref(album))
+
+    @server.tool(annotations=READ_ONLY, structured_output=False)
+    async def aurral_search(query: str, limit: int = 5) -> str:
+        """Search Aurral's catalogue (MusicBrainz-backed) for artists and albums.
+
+        Returns MBIDs and whether each is already in the library (`in_library`
+        can lag behind a recent import; aurral_album is authoritative). Use an album's
+        `release_group` with aurral_album (if in the library) or
+        metadata_album (for editions and track lists, e.g. to give
+        slskd_search_album its `track_titles`).
+        """
+        d = await client.search(query, limit)
+        return _compact(
+            {
+                "artists": [
+                    {
+                        "name": a.get("name"),
+                        "mbid": a.get("id") if a.get("hasMbid") else None,
+                        "disambiguation": a.get("disambiguation") or None,
+                        "in_library": a.get("inLibrary"),
+                    }
+                    for a in d.get("artists") or []
+                ],
+                "albums": [
+                    {
+                        "title": a.get("title"),
+                        "artist": a.get("artistName"),
+                        "release_group": a.get("id"),
+                        "type": a.get("primaryType"),
+                        "secondary": a.get("secondaryTypes") or None,
+                        "date": a.get("releaseDate"),
+                        "in_library": a.get("inLibrary"),
+                        "library_id": a.get("libraryAlbumId"),
+                    }
+                    for a in d.get("albums") or []
+                ],
+            }
+        )
 
     @server.tool(annotations=READ_ONLY, structured_output=False)
     async def aurral_album(album: str, show_tracks: bool = True) -> str:
@@ -183,7 +222,6 @@ def register(server: MCPServer, client: AurralClient) -> None:
                 "status": op.get("status"),
                 "error": op.get("error"),
                 "counts": op.get("counts"),
-                "hardlinked": sum(1 for i in items if i.get("hardlinked")),
                 "targets": sorted(
                     {posixpath.dirname(i["target"]) for i in items if i.get("target")}
                 ),
@@ -199,7 +237,7 @@ def register(server: MCPServer, client: AurralClient) -> None:
         outside it: tags written, files moved or removed. Waits up to `wait_s` for
         the scan to finish."""
         if not album and not artist_id:
-            raise ValueError("pass album or artist_id")
+            raise ToolError("pass album or artist_id")
         album_id = str((await resolve(album))["id"]) if album else None
         job = await client.refresh(album_id=album_id, artist_id=artist_id)
         status = await _wait_refresh(client, job.get("jobId"), wait_s) if wait_s > 0 else "queued"
