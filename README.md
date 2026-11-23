@@ -58,6 +58,28 @@ secret-manager CLIs) comes with the package.
 
    Or install `packages.default` from this flake and register `jtec-mcp`.
 
+### With Home Manager
+
+The flake has a Home Manager module that writes the config, reads the
+provider's token from a file at startup (so sops-nix or agenix secrets work)
+and registers the server with Claude Code:
+
+```nix
+{
+  imports = [ inputs.jtec-mcp.homeManagerModules.default ];
+
+  services.jtec-mcp = {
+    enable = true;
+    settings.services.slskd = {
+      url = "https://slskd.example.lan";
+      key_field = "SLSKD_API_KEY";
+    };
+    secretspec.provider = "bws://<project-uuid>";
+    secretFiles.BWS_ACCESS_TOKEN = config.sops.secrets.bws_token.path;
+  };
+}
+```
+
 ## How secrets are handled
 
 jtec-mcp never talks to your secret manager itself. The `jtec-mcp` command runs

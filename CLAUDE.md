@@ -99,15 +99,64 @@ code, tests and docs. A user's real settings live in
   `SECRETSPEC_PROVIDER`, the provider's credential and `JTEC_MCP_CONFIG` in
   `StdioServerParameters(env=...)`. Don't print secret values or chat text.
 
+## When to extend (for agents using the server)
+
+jtec-mcp grows from real work. While doing a task for the user:
+
+1. **Use it first.** If a `mcp__jtec__<service>_*` tool covers the step, use it.
+2. **Notice the gap.** If you call a service's API by hand (curl, `kubectl exec`
+   into a pod, a port-forward, a throwaway script) for a step that is likely to
+   recur, that step belongs in jtec-mcp.
+3. **Finish the user's task first** with whatever works, then propose the tool
+   (or, if the user has asked you to extend jtec-mcp proactively, open the PR).
+   Don't block their task on an MCP change.
+4. **Build it from what you just did**: the calls that worked, the response
+   shapes you saw, the pitfalls you hit. Put the pitfalls in the docstring.
+
+New tools only appear in a Claude Code session started after the updated
+server is installed. To exercise a tool in the same session, drive the dev
+build over stdio (see Testing).
+
+## Choosing how to talk to a service
+
+In order of preference:
+
+1. **A maintained Python library** for the service: e.g. `proxmoxer`
+   (Proxmox VE), `cloudflare` (official SDK), `azure-identity` plus the
+   relevant `azure-mgmt-*`, `pyarr` (Sonarr/Radarr/Lidarr), `kubernetes`.
+   Check before adding: actively maintained, permissive license, wheels on
+   PyPI (uv2nix builds from wheels; sdist-only packages need build-system
+   overrides), and a modest dependency tree. Wrap synchronous libraries with
+   `anyio.to_thread.run_sync` so tools stay async.
+2. **The service's OpenAPI/Swagger spec.** Many self-hosted apps publish one
+   (often at `/swagger/v1/swagger.json`, `/openapi.json` or `/api/docs`).
+   - For a few endpoints, write a thin httpx client by hand against the spec.
+   - For a broad API, generate a client with `openapi-python-client` into
+     `src/jtec_mcp/<service>/generated/` and commit it, with the command used
+     in a comment at the top of `client.py`. Regenerate, don't hand-edit.
+3. **A hand-written httpx client** from the service's docs or source.
+
+Whatever the client, keep it behind `<service>/client.py` so tools don't
+depend on which option was used, and keep heavy optional libraries (the Azure
+SDKs especially) in a per-service extra if they would bloat the package.
+
 ## Adding a service
 
-1. `src/jtec_mcp/<service>/client.py`: async httpx client, constructor takes
-   `(ServiceConfig, api_key, transport=None)`.
+1. `src/jtec_mcp/<service>/client.py`: the client (see above); an httpx
+   client's constructor takes `(ServiceConfig, api_key, transport=None)`.
 2. `src/jtec_mcp/<service>/tools.py`: `register(server, client)`.
 3. Wire it into `build()` in `server.py`, following the slskd block.
 4. Declare the secret in `secretspec.toml`, add it to `config.example.toml`, and
    add a row to the tools table in `README.md`.
 5. Tests: client with a mock transport, pure logic, and registration.
+
+## Releasing to a host
+
+Hosts install jtec-mcp from this flake via `homeManagerModules.default`
+(`nix/hm-module.nix`). After a PR merges, the host's config updates its flake
+input (`nix flake update jtec-mcp`) and switches; new tools appear in the next
+Claude Code session. The module also adds a short note to Claude Code's
+global context listing the configured services.
 
 ## Commits
 
