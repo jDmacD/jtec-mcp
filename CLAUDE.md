@@ -17,6 +17,8 @@ src/jtec_mcp/
   slskd/client.py   async httpx client for slskd API v0
   slskd/ranking.py  pure: search responses -> ranked album folders
   slskd/tools.py    the MCP tools
+  aurral/client.py  async httpx client for Aurral's /api/library (no OpenAPI spec)
+  aurral/tools.py   album inspection, import and the steps around it
 secretspec.toml     secrets the server reads (all optional)
 flake.nix           uv2nix package + dev shell; wraps the server in `secretspec run`
 ```
@@ -148,7 +150,7 @@ SDKs especially) in a per-service extra if they would bloat the package.
 1. `src/jtec_mcp/<service>/client.py`: the client (see above); an httpx
    client's constructor takes `(ServiceConfig, api_key, transport=None)`.
 2. `src/jtec_mcp/<service>/tools.py`: `register(server, client)`.
-3. Wire it into `build()` in `server.py`, following the slskd block.
+3. Add it to `_services()` in `server.py` (name -> client class, register).
 4. Declare the secret in `secretspec.toml`, add it to `config.example.toml`, and
    add a row to the tools table in `README.md`.
 5. Tests: client with a mock transport, pure logic, and registration.

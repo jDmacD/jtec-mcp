@@ -18,18 +18,33 @@ Results are summarised; ask for detail with the tools' optional arguments.
 """
 
 
+def _services() -> dict:
+    """Service name -> (client class, register function)."""
+    from jtec_mcp.aurral.client import AurralClient
+    from jtec_mcp.aurral.tools import register as register_aurral
+    from jtec_mcp.slskd.client import SlskdClient
+    from jtec_mcp.slskd.tools import register as register_slskd
+
+    return {
+        "slskd": (SlskdClient, register_slskd),
+        "aurral": (AurralClient, register_aurral),
+    }
+
+
 def build(services: dict[str, config.ServiceConfig] | None = None) -> MCPServer:
     services = config.load() if services is None else services
     server = MCPServer("jtec-mcp", instructions=INSTRUCTIONS)
 
-    if (svc := services.get("slskd")) and (key := svc.api_key()):
-        from jtec_mcp.slskd.client import SlskdClient
-        from jtec_mcp.slskd.tools import register
-
-        register(server, SlskdClient(svc, key))
-        log.info("slskd tools registered (%s)", svc.url)
-    elif svc:
-        log.warning("slskd configured but %s is not set; skipping", svc.secret_env)
+    for name, (client_cls, register) in _services().items():
+        svc = services.get(name)
+        if svc is None:
+            continue
+        key = svc.api_key()
+        if not key:
+            log.warning("%s configured but %s is not set; skipping", name, svc.secret_env)
+            continue
+        register(server, client_cls(svc, key))
+        log.info("%s tools registered (%s)", name, svc.url)
 
     return server
 

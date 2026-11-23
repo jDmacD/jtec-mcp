@@ -7,3 +7,6 @@ url = "https://slskd.example.lan"
 secret_env = "SLSKD"          # default: service name upper-cased
 key_field = "SLSKD_API_KEY"   # the variable holds JSON; omit for a bare key
 # verify_tls = "/path/to/ca.pem"
+
+[services.aurral]
+url = "https://music.example.lan"   # the secret is the bare API key: no key_field
