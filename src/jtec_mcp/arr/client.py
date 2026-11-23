@@ -22,6 +22,10 @@ class App:
     title_field: str = "title"
     history: str | None = None  # history/<x>?<x>Id=
     queue_includes: tuple[str, ...] = ()
+    # Item-level search command: (command name, body field, field takes a list)
+    search: tuple[str, str, bool] | None = None
+    # Bulk monitoring editor: (path, ids field); None where unsupported
+    editor: tuple[str, str] | None = None
 
 
 APPS: dict[str, App] = {
@@ -30,12 +34,16 @@ APPS: dict[str, App] = {
         "series",
         history="series",
         queue_includes=("includeSeries", "includeEpisode", "includeUnknownSeriesItems"),
+        search=("SeriesSearch", "seriesId", False),
+        editor=("/series/editor", "seriesIds"),
     ),
     "radarr": App(
         "v3",
         "movie",
         history="movie",
         queue_includes=("includeMovie", "includeUnknownMovieItems"),
+        search=("MoviesSearch", "movieIds", True),
+        editor=("/movie/editor", "movieIds"),
     ),
     # Whisparr v3 is Radarr-based: movies, not scenes.
     "whisparr": App(
@@ -43,6 +51,8 @@ APPS: dict[str, App] = {
         "movie",
         history="movie",
         queue_includes=("includeMovie", "includeUnknownMovieItems"),
+        search=("MoviesSearch", "movieIds", True),
+        editor=("/movie/editor", "movieIds"),
     ),
     "lidarr": App(
         "v1",
@@ -50,6 +60,8 @@ APPS: dict[str, App] = {
         "artistName",
         history="artist",
         queue_includes=("includeArtist", "includeAlbum", "includeUnknownArtistItems"),
+        search=("ArtistSearch", "artistId", False),
+        editor=("/artist/editor", "artistIds"),
     ),
     # Chaptarr speaks Readarr's API. Its /book list is too big to fetch
     # (it timed out at 30 s for ~1,000 books), so the library is its authors.
@@ -59,6 +71,8 @@ APPS: dict[str, App] = {
         "authorName",
         history="author",
         queue_includes=("includeAuthor", "includeBook", "includeUnknownAuthorItems"),
+        # No editor: Chaptarr monitors ebooks and audiobooks separately.
+        search=("AuthorSearch", "authorId", False),
     ),
     "prowlarr": App("v1"),
 }
@@ -92,6 +106,14 @@ class ArrClient:
         r = check(await self._http.get(path, params=params or None), self.label)
         return r.json() if r.content else None
 
+    async def send(
+        self, method: str, path: str, params: dict | None = None, json=None, timeout=None
+    ):
+        kw = {"timeout": timeout} if timeout else {}
+        r = await self._http.request(method, path, params=params, json=json, **kw)
+        r = check(r, self.label)
+        return r.json() if r.content else None
+
     async def status(self) -> dict:
         return await self.get("/system/status")
 
@@ -122,3 +144,47 @@ class ArrClient:
             params["includeEpisode"] = "true"
         data = await self.get(f"/history/{h}", **params)
         return data.get("records", []) if isinstance(data, dict) else data or []
+
+    async def queue_remove(
+        self, queue_id: int, remove_from_client: bool, blocklist: bool, search: bool
+    ) -> None:
+        params = {
+            "removeFromClient": str(remove_from_client).lower(),
+            "blocklist": str(blocklist).lower(),
+            "skipRedownload": str(not search).lower(),
+        }
+        await self.send("DELETE", f"/queue/{queue_id}", params=params)
+
+    async def command(self, name: str, **body) -> dict:
+        return await self.send("POST", "/command", json={"name": name, **body})
+
+    async def command_status(self, command_id: int) -> dict:
+        return await self.get(f"/command/{command_id}")
+
+    async def episodes(self, series_id: int) -> list[dict]:
+        return await self.get("/episode", seriesId=series_id)
+
+    async def set_monitored(self, ids: list[int], monitored: bool) -> None:
+        path, field = self.app.editor
+        body = {field: ids, "monitored": monitored}
+        if self.name == "lidarr" and not monitored:
+            body["monitorNewItems"] = "none"
+        await self.send("PUT", path, json=body)
+
+    async def albums(self) -> list[dict]:
+        return await self.get("/album")
+
+    async def set_albums_monitored(self, album_ids: list[int], monitored: bool) -> None:
+        await self.send(
+            "PUT", "/album/monitor", json={"albumIds": album_ids, "monitored": monitored}
+        )
+
+    # Prowlarr
+    async def indexers(self) -> list[dict]:
+        return await self.get("/indexer")
+
+    async def indexer_status(self) -> list[dict]:
+        return await self.get("/indexerstatus")
+
+    async def tags(self) -> dict[int, str]:
+        return {t["id"]: t["label"] for t in await self.get("/tag")}

@@ -395,20 +395,30 @@ async def test_bazarr_missing_groups_episodes_and_flags_profiles():
 
 @pytest.mark.anyio
 async def test_registration_follows_configured_services(monkeypatch):
-    for name in ("RADARR", "SONARR", "QBITTORRENT", "JELLYFIN", "BAZARR"):
+    for name in ("RADARR", "SONARR", "PROWLARR", "QBITTORRENT", "JELLYFIN", "BAZARR"):
         monkeypatch.setenv(name, "k")
-    names = {t.name for t in await build({"radarr": svc("radarr")}).list_tools()}
-    assert names == {"arr_status", "arr_queue", "arr_item"}
-    services = {n: svc(n) for n in ("radarr", "sonarr", "qbittorrent", "jellyfin", "bazarr")}
-    names = {t.name for t in await build(services).list_tools()}
-    assert names == {
+    arr = {
         "arr_status",
         "arr_queue",
         "arr_item",
+        "arr_queue_remove",
+        "arr_search",
+        "arr_set_monitored",
+    }
+    names = {t.name for t in await build({"radarr": svc("radarr")}).list_tools()}
+    assert names == arr
+    with_prowlarr = {"radarr": svc("radarr"), "prowlarr": svc("prowlarr")}
+    names = {t.name for t in await build(with_prowlarr).list_tools()}
+    assert names == arr | {"prowlarr_indexers", "prowlarr_test", "prowlarr_set_indexer"}
+    services = {n: svc(n) for n in ("radarr", "sonarr", "qbittorrent", "jellyfin", "bazarr")}
+    names = {t.name for t in await build(services).list_tools()}
+    assert names == arr | {
         "qbittorrent_torrent",
         "jellyfin_sessions",
         "jellyfin_playback_check",
         "bazarr_missing",
+        "bazarr_subtitle_search",
+        "bazarr_download_subtitle",
     }
     monkeypatch.delenv("RADARR")
     monkeypatch.delenv("SONARR")

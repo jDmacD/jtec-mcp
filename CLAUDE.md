@@ -21,7 +21,8 @@ src/jtec_mcp/
   aurral/tools.py   album inspection, import and the steps around it
   metadata/         Lidarr metadata server (MusicBrainz mirror): editions, track lists
   arr/              Servarr apps (Sonarr, Radarr, ...): one client, per-app differences in APPS;
-                    one set of arr_* tools over every configured app
+                    one set of arr_* tools over every configured app; actions.py: the
+                    write tools; prowlarr.py: indexer tools (registered with Prowlarr)
   qbittorrent/      WebAPI client (Bearer key); swarm.py: pure torrent summary + stall diagnosis
   jellyfin/         sessions; playback.py: pure direct-play prediction per client profile
   bazarr/           missing subtitles and unmanaged (profile-less) items

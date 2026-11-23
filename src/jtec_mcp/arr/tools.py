@@ -11,6 +11,7 @@ import json
 from mcp.server.mcpserver import MCPServer
 from mcp_types import ToolAnnotations
 
+from jtec_mcp.arr import actions, prowlarr
 from jtec_mcp.arr.client import ArrClient
 from jtec_mcp.errors import ToolError
 from jtec_mcp.qbittorrent import swarm
@@ -310,3 +311,7 @@ def register(
                 out["hidden_renames"] = quiet or None
             out["history"] = [_history_entry(h) for h in events[:history]]
         return _compact(out)
+
+    actions.register(server, clients, _queue_entry)
+    if "prowlarr" in clients:
+        prowlarr.register(server, clients["prowlarr"])
