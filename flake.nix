@@ -25,6 +25,7 @@
 
   outputs =
     {
+      self,
       nixpkgs,
       pyproject-nix,
       uv2nix,
@@ -74,6 +75,8 @@
       );
     in
     {
+      homeManagerModules.default = import ./nix/hm-module.nix self;
+
       packages = forAllSystems (
         system:
         let
