@@ -19,6 +19,9 @@ call, not a dozen requests and a page of JSON.
 | | `slskd_download_folder` | Download one of the search's folders (by its number), so the whole album comes from one peer. |
 | | `slskd_clear_downloads` | Tidy finished (or failed, or stuck) entries from the transfer list; dry run by default. |
 | | `slskd_reply`, `slskd_acknowledge` | Answer a peer's message (e.g. an anti-bot question), or mark it read. |
+| [Aurral](https://github.com/lklynet/aurral) (music library) | `aurral_album` | One album at a glance (by id, MusicBrainz ID or album link): what's missing, which folders hold its files, and other albums with the same title, the signs of a mixed or split album. |
+| | `aurral_import_folder` | Bring a downloaded folder into the library (hardlinked by default); checks only, unless told to go ahead. |
+| | `aurral_set_monitored`, `aurral_set_edition`, `aurral_cancel_album_downloads`, `aurral_refresh` | The steps around an import: pause monitoring, pick the edition, stop Aurral's own downloads, rescan. |
 
 More services are planned; each one only appears if you configure it.
 
