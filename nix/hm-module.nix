@@ -48,6 +48,10 @@ let
   };
 
   services = lib.attrNames (cfg.settings.services or { });
+
+  # Home Manager ships mcpServers in a generated plugin named `hm`, and
+  # Claude Code namespaces plugin tools as mcp__plugin_<plugin>_<server>__.
+  toolPrefix = "mcp__plugin_hm_${cfg.claudeCode.serverName}__";
 in
 {
   options.services.jtec-mcp = {
@@ -114,7 +118,7 @@ in
       serverName = lib.mkOption {
         type = lib.types.str;
         default = "jtec";
-        description = "MCP server name; Claude Code exposes tools as mcp__<name>__<tool>.";
+        description = "MCP server name. Home Manager registers servers through its generated `hm` plugin, so Claude Code names the tools mcp__plugin_hm_<name>__<tool>.";
       };
       context = lib.mkOption {
         type = lib.types.bool;
@@ -136,7 +140,7 @@ in
         ## jtec-mcp
 
         The `${cfg.claudeCode.serverName}` MCP server (tools named
-        `mcp__${cfg.claudeCode.serverName}__<service>_<tool>`) has workflow-level
+        `${toolPrefix}<service>_<tool>`) has workflow-level
         tools for: ${if services == [ ] then "no services yet" else lib.concatStringsSep ", " services}.
         Prefer these tools to hand-written API calls (curl, `kubectl exec`,
         port-forwards) for those services. Source and contributor guide:
