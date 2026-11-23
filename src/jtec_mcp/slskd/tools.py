@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from collections import Counter
 
 from mcp.server.mcpserver import MCPServer
@@ -84,15 +86,36 @@ def register(server: MCPServer, client: SlskdClient) -> None:
         )
 
     @server.tool(annotations=READ_ONLY, structured_output=False)
-    async def slskd_downloads(username: str | None = None, show_completed: bool = False) -> str:
+    async def slskd_downloads(
+        username: str | None = None,
+        show_completed: bool = False,
+        wait_s: int = 0,
+        poll_s: int = 10,
+    ) -> str:
         """Summarise download transfers, per peer and folder.
 
         Gives counts by state for each folder, and lists files that are not
         "Completed, Succeeded" (or every file with `show_completed`). Limit to one
-        peer with `username`.
+        peer with `username`. `local_folder` is the folder's name under slskd's
+        downloads directory, i.e. what to import from.
+
+        With `wait_s`, waits up to that many seconds for every listed transfer to
+        finish (any "Completed, ..." state), checking every `poll_s`, then
+        reports; `finished` says whether they all did. Call again to keep waiting.
         """
+        deadline = time.monotonic() + max(0, wait_s)
+        started = time.monotonic()
+        while True:
+            users = await client.downloads(username)
+            files = [f for u in users for d in u.get("directories", []) for f in d.get("files", [])]
+            # Nothing listed means nothing to wait for.
+            finished = all(f.get("state", "").startswith(FINISHED) for f in files)
+            if finished or time.monotonic() >= deadline:
+                break
+            await asyncio.sleep(max(1, poll_s))
+
         out = []
-        for user in await client.downloads(username):
+        for user in users:
             for d in user.get("directories", []):
                 files = d.get("files", [])
                 states = Counter(f.get("state", "?") for f in files)
@@ -110,11 +133,20 @@ def register(server: MCPServer, client: SlskdClient) -> None:
                     {
                         "user": user.get("username"),
                         "folder": d.get("directory"),
+                        "local_folder": (d.get("directory") or "").rpartition("\\")[2],
                         "states": dict(states),
                         "bytes_remaining": sum(f.get("bytesRemaining") or 0 for f in files),
                         "files": listed,
                     }
                 )
+        if wait_s:
+            return _compact(
+                {
+                    "finished": finished,
+                    "waited_s": round(time.monotonic() - started),
+                    "folders": out,
+                }
+            )
         return _compact(out)
 
     @server.tool(annotations=READ_ONLY, structured_output=False)

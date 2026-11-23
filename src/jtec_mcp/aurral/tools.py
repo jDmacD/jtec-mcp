@@ -195,6 +195,11 @@ def register(server: MCPServer, client: AurralClient) -> None:
         with aurral_album. Turn it off for files that already carry MusicBrainz
         IDs, or for editions MusicBrainz has no release group for.
 
+        Replacing files the library already has: move the old files out, run
+        aurral_refresh on the album, then import. Without the rescan Aurral still
+        has the old file on record and skips the new one as a possible duplicate.
+        Re-running an import reports already-imported files as "duplicate".
+
         Defaults to `dry_run`, which only checks the folder. With dry_run=false it
         imports, waits for the operation, and lists anything not imported.
         """
