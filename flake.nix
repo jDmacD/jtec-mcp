@@ -44,6 +44,22 @@
       workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
       overlay = workspace.mkPyprojectOverlay { sourcePreference = "wheel"; };
 
+      # Secret-provider CLIs that secretspec shells out to, so the package works
+      # without anything else installed. bws is unfree; allow just that one.
+      providerTools =
+        system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            config.allowUnfreePredicate = pkg: lib.getName pkg == "bws";
+          };
+        in
+        [
+          pkgs.secretspec
+          pkgs.bws
+          pkgs.sops
+        ];
+
       pythonSets = forAllSystems (
         system:
         let
@@ -72,9 +88,7 @@
           # before starting it.
           jtec-mcp = pkgs.writeShellApplication {
             name = "jtec-mcp";
-            # Provider CLIs (bws, sops, ...) come from the user's PATH;
-            # bws is unfree, so the flake doesn't pull it in.
-            runtimeInputs = [ pkgs.secretspec ];
+            runtimeInputs = providerTools system;
             text = ''
               exec secretspec run \
                 --file "''${JTEC_MCP_SECRETSPEC:-${./secretspec.toml}}" \
@@ -109,8 +123,8 @@
             packages = [
               virtualenv
               pkgs.uv
-              pkgs.secretspec
-            ];
+            ]
+            ++ providerTools system;
             env = {
               UV_NO_SYNC = "1";
               UV_PYTHON = pythonSet.python.interpreter;
