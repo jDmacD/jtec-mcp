@@ -1,93 +1,86 @@
 # jtec-mcp
 
-An [MCP](https://modelcontextprotocol.io) server that gives Claude (or any MCP
-client) **workflow-level tools** for self-hosted homelab services.
+Tools that let an AI assistant such as Claude run a self-hosted homelab's
+services for you: find an album on Soulseek, check how downloads are going,
+answer a peer's chat, and (soon) import music into Aurral.
 
-Raw REST APIs make agents do a lot of plumbing: start a search, poll it, page
-through 160 KB of JSON, group files, rank them. jtec-mcp does that plumbing and
-returns a compact answer, one tool call per step of a real task.
+It is an [MCP](https://modelcontextprotocol.io) server. Rather than handing the
+assistant raw REST APIs, each tool does one real step of a task and returns a
+short answer. "Find me a complete lossless copy of this album" is one tool
+call, not a dozen requests and a page of JSON.
 
-## Tools
+## What it can do
 
-| Service | Tool | What it does |
+| Service | Tool | |
 | --- | --- | --- |
-| [slskd](https://github.com/slskd/slskd) | `slskd_search_album` | Searches Soulseek, groups results into peer folders (one peer's copy of one edition) and ranks them: most expected tracks (by title when given a track list), lossless first, then free slot, queue and speed. |
-| | `slskd_downloads` | Download transfers summarised per peer and folder, with unfinished files listed. |
-| | `slskd_conversations` | Private chats with their latest messages, e.g. anti-bot challenges from peers. |
+| [slskd](https://github.com/slskd/slskd) (Soulseek) | `slskd_search_album` | Search for an album and list complete copies, best first: all tracks present, lossless, and a peer who can send it now. |
+| | `slskd_downloads` | How downloads are going, per peer and album folder. |
+| | `slskd_conversations` | Unread private messages, such as peers asking a question before they share. |
 
-Tools carry MCP annotations (`readOnlyHint`, ...) so clients can allow the
-read-only ones without prompting. Tools are only registered for services that
-are configured *and* whose secret is present.
+More services are planned; each one only appears if you configure it.
 
-## How secrets work
+Read-only tools are marked as such, so you can let your assistant use them
+freely and keep approval prompts for tools that change things.
 
-The server never talks to a secret store. It reads API keys from environment
-variables, which [secretspec](https://secretspec.dev) fills when it starts the
-server:
+## Quick start
 
-```
-jtec-mcp  =  secretspec run --file secretspec.toml -- jtec-mcp-server
-```
+You need [Nix](https://nixos.org) with flakes. Everything else (Python, the
+secret-manager CLIs) comes with the package.
 
-- `secretspec.toml` declares the secrets (all optional): `SLSKD`, `AURRAL`, ...
-- `SECRETSPEC_PROVIDER` picks the backend: Bitwarden Secrets Manager
-  (`bws://<project-uuid>`, needs the `bws` CLI on `PATH` and `BWS_ACCESS_TOKEN`),
-  sops, a keyring, 1Password, Vault, ... Lookups are by key name.
-- A secret may be the bare key, or a JSON object with the key as one field
-  (`key_field` in the config).
-- Use your own declarations with `JTEC_MCP_SECRETSPEC=/path/to/secretspec.toml`.
-- secretspec asks agents for a reason when reading secrets; the wrapper sets
-  `SECRETSPEC_REASON="jtec-mcp server"` unless you set one.
+1. **Say where your services are**, in `~/.config/jtec-mcp/config.toml`:
 
-## Configuration
+   ```toml
+   [services.slskd]
+   url = "https://slskd.example.lan"
+   key_field = "SLSKD_API_KEY"   # only if the secret is a JSON object
+   ```
 
-`~/.config/jtec-mcp/config.toml` (or `JTEC_MCP_CONFIG`) says where services
-are. It holds no secrets; see [`config.example.toml`](config.example.toml).
+   This file holds no secrets. See [`config.example.toml`](config.example.toml).
 
-```toml
-[services.slskd]
-url = "https://slskd.example.lan"
-key_field = "SLSKD_API_KEY"
-```
+2. **Store the API keys** in a secret manager that
+   [secretspec](https://secretspec.dev) supports, such as Bitwarden Secrets
+   Manager, sops, 1Password, Vault or your OS keyring. By default each key is
+   looked up under the service's name (`slskd`, `aurral`); it can be the bare
+   key, or a JSON object containing it.
 
-## Install
+3. **Tell secretspec where to look**, in the server's environment:
 
-With Nix (packaged from `uv.lock` by [uv2nix](https://github.com/pyproject-nix/uv2nix)):
+   ```sh
+   export SECRETSPEC_PROVIDER="bws://<your-project-uuid>"   # Bitwarden example
+   export BWS_ACCESS_TOKEN=...                              # the provider's own login
+   ```
 
-```sh
-nix run github:jDmacD/jtec-mcp           # the secretspec-wrapped server
-```
+4. **Add it to Claude Code** (available in every project):
 
-Register it with Claude Code for every project:
+   ```sh
+   claude mcp add --scope user jtec -- nix run github:jDmacD/jtec-mcp
+   ```
 
-```sh
-claude mcp add --scope user jtec -- nix run github:jDmacD/jtec-mcp
-```
+   Or install `packages.default` from this flake and register `jtec-mcp`.
 
-(or point it at a `jtec-mcp` installed from the flake's `packages.default`).
-`SECRETSPEC_PROVIDER` and the provider's credentials must be in the server's
-environment.
+## How secrets are handled
 
-## Development
+jtec-mcp never talks to your secret manager itself. The `jtec-mcp` command runs
+`secretspec run`, which fetches the keys listed in
+[`secretspec.toml`](secretspec.toml) and starts the server with them as
+environment variables. That means:
 
-```sh
-nix develop          # Python 3.13, uv, secretspec, editable install
-pytest
-ruff format && ruff check
-```
+- you can use any secretspec provider, and switch providers without code changes;
+- a missing key just means that service's tools aren't offered;
+- secretspec records why secrets were read (it asks automated tools for a
+  reason); jtec-mcp gives "jtec-mcp server" unless you set `SECRETSPEC_REASON`.
 
-Dependencies are managed with uv (`uv add ...`, `uv lock`); the flake builds
-from `uv.lock`, so there is nothing else to update.
+To use different key names, copy `secretspec.toml`, change the `ref` entries,
+and set `JTEC_MCP_SECRETSPEC` to your copy.
 
-### Adding a service
+## Contributing
 
-1. `src/jtec_mcp/<service>/client.py`: a thin async client over the API.
-2. `src/jtec_mcp/<service>/tools.py`: `register(server, client)`. Shape tools
-   around tasks, prefix names with the service, return compact JSON, set
-   annotations honestly.
-3. Register it in `server.py`, declare its secret in `secretspec.toml`, and add
-   it to `config.example.toml`.
+`nix develop` gives you a shell with everything needed; `pytest` runs the tests.
+Dependencies are managed with [uv](https://docs.astral.sh/uv/), and the Nix
+package is built from `uv.lock` by [uv2nix](https://github.com/pyproject-nix/uv2nix).
+[`CLAUDE.md`](CLAUDE.md) describes the code layout and conventions (it's written
+for coding agents, but it's the most complete guide for people too).
 
 ## License
 
-MIT
+[MIT](LICENSE)
