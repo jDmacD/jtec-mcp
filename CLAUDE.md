@@ -103,7 +103,10 @@ code, tests and docs. A user's real settings live in
 
 jtec-mcp grows from real work. While doing a task for the user:
 
-1. **Use it first.** If a `mcp__jtec__<service>_*` tool covers the step, use it.
+1. **Use it first.** If a jtec tool covers the step, use it. Its name depends
+   on how the server was registered: `mcp__plugin_hm_jtec__<service>_<tool>`
+   via the Home Manager module, `mcp__jtec__<service>_<tool>` via
+   `claude mcp add jtec ...`.
 2. **Notice the gap.** If you call a service's API by hand (curl, `kubectl exec`
    into a pod, a port-forward, a throwaway script) for a step that is likely to
    recur, that step belongs in jtec-mcp.
