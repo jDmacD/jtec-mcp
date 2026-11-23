@@ -16,6 +16,9 @@ call, not a dozen requests and a page of JSON.
 | [slskd](https://github.com/slskd/slskd) (Soulseek) | `slskd_search_album` | Search for an album and list complete copies, best first: all tracks present, lossless, and a peer who can send it now. |
 | | `slskd_downloads` | How downloads are going, per peer and album folder. |
 | | `slskd_conversations` | Unread private messages, such as peers asking a question before they share. |
+| | `slskd_download_folder` | Download one of the search's folders (by its number), so the whole album comes from one peer. |
+| | `slskd_clear_downloads` | Tidy finished (or failed, or stuck) entries from the transfer list; dry run by default. |
+| | `slskd_reply`, `slskd_acknowledge` | Answer a peer's message (e.g. an anti-bot question), or mark it read. |
 
 More services are planned; each one only appears if you configure it.
 

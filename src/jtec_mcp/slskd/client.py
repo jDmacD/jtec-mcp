@@ -58,6 +58,35 @@ class SlskdClient:
             return [data] if data else []
         return await self._get("/transfers/downloads")
 
+    async def search_responses(self, search_id: str) -> list[dict]:
+        return await self._get(f"/searches/{search_id}/responses")
+
+    async def enqueue(self, username: str, files: list[dict]) -> dict:
+        """Queue downloads; files are {filename, size} exactly as search returned them."""
+        r = await self._http.post(
+            f"/transfers/downloads/{quote(username, safe='')}",
+            json=[{"filename": f["filename"], "size": f["size"]} for f in files],
+        )
+        r.raise_for_status()
+        return r.json()
+
+    async def remove_download(self, username: str, transfer_id: str) -> None:
+        """Remove a transfer entry. Cancels it first if it is still running."""
+        r = await self._http.delete(
+            f"/transfers/downloads/{quote(username, safe='')}/{transfer_id}",
+            params={"remove": "true"},
+        )
+        r.raise_for_status()
+
+    async def send_message(self, username: str, message: str) -> None:
+        # The body is a bare JSON string.
+        r = await self._http.post(f"/conversations/{quote(username, safe='')}", json=message)
+        r.raise_for_status()
+
+    async def acknowledge(self, username: str) -> None:
+        r = await self._http.put(f"/conversations/{quote(username, safe='')}")
+        r.raise_for_status()
+
     async def conversations(self) -> list[dict]:
         return await self._get("/conversations")
 
