@@ -24,6 +24,13 @@ call, not a dozen requests and a page of JSON.
 | | `aurral_search` | Find artists and albums (with their MusicBrainz IDs) and whether they're already in the library. |
 | | `aurral_set_monitored`, `aurral_set_edition`, `aurral_cancel_album_downloads`, `aurral_refresh` | The steps around an import: pause monitoring, pick the edition, stop Aurral's own downloads, rescan. |
 | MusicBrainz (via [Lidarr's metadata server](https://api.lidarr.audio), no key) | `metadata_album` | An album's editions and track list with durations: the titles to search Soulseek for, and the edition a downloaded copy matches. |
+| [Sonarr](https://sonarr.tv), [Radarr](https://radarr.video), Lidarr, Prowlarr, Whisparr, Chaptarr | `arr_status` | Version, health warnings, queue counts and free space, for one app or all of them: the check after an upgrade. |
+| | `arr_queue` | What's downloading, with each download's state in qBittorrent alongside; stalled torrents get a swarm check (e.g. everyone stuck at 64% behind a seed that never sends). |
+| | `arr_item` | Find a series, film, artist or author, with its files and recent history: grabs, imports, failures and why. |
+| [qBittorrent](https://www.qbittorrent.org) | `qbittorrent_torrent` | Any torrent's state, peers, availability and trackers, with a plain-language diagnosis of why it's stuck. |
+| [Jellyfin](https://jellyfin.org) | `jellyfin_sessions` | What's playing, on which device, and whether it's direct playing or transcoding, and why. |
+| | `jellyfin_playback_check` | Will this film or episode (or a whole season) direct play on the TV? Bitrate, codecs, HDR, audio passthrough and subtitles, with tips such as a better audio track. |
+| [Bazarr](https://www.bazarr.media) | `bazarr_missing` | Films and episodes still missing subtitles, items Bazarr ignores because they have no language profile, and throttled providers. |
 
 More services are planned; each one only appears if you configure it.
 
