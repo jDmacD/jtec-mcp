@@ -1,0 +1,28 @@
+[project]
+name = "jtec-mcp"
+version = "0.1.0"
+description = "MCP server with workflow-level tools for self-hosted homelab services (slskd, Aurral, ...)"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "jDmacD" }]
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp>=2.3.0",
+]
+
+[project.scripts]
+jtec-mcp-server = "jtec_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
+]
