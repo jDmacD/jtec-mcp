@@ -122,6 +122,11 @@ def radarr_handler(seen: list):
                         "sourceTitle": "Demolition Man 1993 PROPER",
                         "data": {"importedPath": "/store/films/x.mkv", "size": "9394687231"},
                     },
+                    {
+                        "date": "2026-11-20T17:20:03Z",
+                        "eventType": "movieFileRenamed",
+                        "sourceTitle": "renamed",
+                    },
                 ],
             )
         return httpx.Response(404, json={"message": f"no route {p}"})
@@ -196,8 +201,13 @@ async def test_arr_item_exact_match_with_history_and_no_secrets():
     assert out["id"] == 447 and out["quality_profile"] == "HD-1080p"
     assert out["file"]["quality"] == "Bluray-1080p" and out["file"]["size_gb"] == 9.39
     assert [h["event"] for h in out["history"]] == ["downloadFolderImported", "grabbed"]
+    assert out["hidden_renames"] == 1
     assert out["history"][0]["size"] == 9.39
     assert "SECRET" not in json.dumps(out)
+    full = await call(
+        arr_server(), "arr_item", app="radarr", query="demolition man", include_renames=True
+    )
+    assert full["history"][0]["event"] == "movieFileRenamed" and "hidden_renames" not in full
 
 
 @pytest.mark.anyio

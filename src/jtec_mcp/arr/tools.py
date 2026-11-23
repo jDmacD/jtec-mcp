@@ -84,13 +84,25 @@ def _queue_entry(app: str, r: dict) -> dict:
         "tracked": f"{r.get('trackedDownloadState')}/{r.get('trackedDownloadStatus')}",
         "messages": messages or None,
         "progress_pct": round(100 * (size - left) / size, 1) if size else None,
-        "size_gb": _gb(size),
+        "size_gb": _gb(size) if size else None,  # 0 until the client knows
         "timeleft": r.get("timeleft"),
         "added": r.get("added"),
         "indexer": r.get("indexer"),
         "client": r.get("downloadClient"),
         "hash": (r.get("downloadId") or "").lower() or None,
     }
+
+
+# Bookkeeping events: a library-wide rename or retag writes one per file and
+# buries the grabs and imports.
+QUIET_EVENTS = {
+    "episodeFileRenamed",
+    "movieFileRenamed",
+    "trackFileRenamed",
+    "trackFileRetagged",
+    "bookFileRenamed",
+    "bookFileRetagged",
+}
 
 
 def _history_entry(h: dict) -> dict:
@@ -249,7 +261,9 @@ def register(
         return _compact({"count": len(entries), "queue": entries})
 
     @server.tool(annotations=READ_ONLY, structured_output=False)
-    async def arr_item(app: str, query: str, history: int = 15) -> str:
+    async def arr_item(
+        app: str, query: str, history: int = 15, include_renames: bool = False
+    ) -> str:
         """Find an item in a Servarr app's library by title or id,
         with its files and recent history.
 
@@ -259,7 +273,9 @@ def register(
         (monitored, quality profile, path, file or episode counts) and its last
         `history` events, newest first: grabs (indexer, release group),
         imports (dropped and imported paths), failures and deletions with
-        their reason. Several matches are listed for you to pick an id.
+        their reason. Renames and retags are left out unless
+        `include_renames`; `hidden_renames` counts them. Several matches are
+        listed for you to pick an id.
         """
         c = pick(app, queue_apps)[app.lower()]
         q = query.strip()
@@ -288,5 +304,9 @@ def register(
         if history > 0:
             events = await c.history(item["id"])
             events.sort(key=lambda h: h.get("date") or "", reverse=True)
+            if not include_renames:
+                quiet = sum(1 for h in events if h.get("eventType") in QUIET_EVENTS)
+                events = [h for h in events if h.get("eventType") not in QUIET_EVENTS]
+                out["hidden_renames"] = quiet or None
             out["history"] = [_history_entry(h) for h in events[:history]]
         return _compact(out)

@@ -81,3 +81,25 @@ def test_dts_is_a_risk_not_a_verdict():
     }
     r = playback.check(src, TV)
     assert r["verdict"] == "direct play, with risks" and "dts" in r["risks"][0]
+
+
+def test_dv_with_base_layer_plays_and_subtitles_are_trimmed():
+    streams = [
+        stream(0, "Video", "hevc", VideoRangeType="DOVIWithEL"),
+        stream(1, "Audio", "eac3", Language="eng", IsDefault=True),
+        stream(2, "Subtitle", "PGSSUB", Language="eng"),
+        stream(
+            3,
+            "Subtitle",
+            "subrip",
+            Language="fra",
+            IsForced=True,
+            IsExternal=True,
+            IsTextSubtitleStream=True,
+        ),
+    ]
+    streams += [stream(10 + i, "Subtitle", "PGSSUB", Language="deu") for i in range(5)]
+    r = playback.check({"Bitrate": 30_000_000, "MediaStreams": streams}, TV)
+    assert r["verdict"] == "direct play"
+    assert [s["index"] for s in r["source"]["subtitles"]] == [2, 3]
+    assert r["source"]["other_subtitles"] == 5
