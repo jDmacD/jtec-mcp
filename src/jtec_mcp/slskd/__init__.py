@@ -1,0 +1,1 @@
+"""slskd (Soulseek client) tools."""
