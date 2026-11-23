@@ -27,10 +27,15 @@ call, not a dozen requests and a page of JSON.
 | [Sonarr](https://sonarr.tv), [Radarr](https://radarr.video), Lidarr, Prowlarr, Whisparr, Chaptarr | `arr_status` | Version, health warnings, queue counts and free space, for one app or all of them: the check after an upgrade. |
 | | `arr_queue` | What's downloading, with each download's state in qBittorrent alongside; stalled torrents get a swarm check (e.g. everyone stuck at 64% behind a seed that never sends). |
 | | `arr_item` | Find a series, film, artist or author, with its files and recent history: grabs, imports, failures and why. |
+| | `arr_queue_remove` | Remove a stuck or fake download, optionally blocklisting it and searching for a replacement; dry run by default. |
+| | `arr_search` | Search for a series (or one season or episode), film, artist or author. |
+| | `arr_set_monitored` | Monitor or unmonitor items in bulk (Lidarr: their albums too); dry run by default. |
+| | `prowlarr_indexers`, `prowlarr_test`, `prowlarr_set_indexer` | Which indexers are failing and since when; test them (which also ends a failure backoff); switch one on or off. |
 | [qBittorrent](https://www.qbittorrent.org) | `qbittorrent_torrent` | Any torrent's state, peers, availability and trackers, with a plain-language diagnosis of why it's stuck. |
 | [Jellyfin](https://jellyfin.org) | `jellyfin_sessions` | What's playing, on which device, and whether it's direct playing or transcoding, and why. |
 | | `jellyfin_playback_check` | Will this film or episode (or a whole season) direct play on the TV? Bitrate, codecs, HDR, audio passthrough and subtitles, with tips such as a better audio track. |
 | [Bazarr](https://www.bazarr.media) | `bazarr_missing` | Films and episodes still missing subtitles, items Bazarr ignores because they have no language profile, and throttled providers. |
+| | `bazarr_subtitle_search`, `bazarr_download_subtitle` | Search the subtitle providers for one film or episode and download a numbered candidate. |
 
 More services are planned; each one only appears if you configure it.
 

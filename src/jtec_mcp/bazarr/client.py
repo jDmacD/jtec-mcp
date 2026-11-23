@@ -47,3 +47,33 @@ class BazarrClient:
 
     async def providers(self) -> list[dict]:
         return (await self._get("/providers") or {}).get("data", [])
+
+    async def _send(self, method: str, path: str, params: dict, data: dict | None = None):
+        r = check(await self._http.request(method, path, params=params, data=data), "Bazarr")
+        return r.json() if r.content else None
+
+    async def candidates(self, kind: str, item_id: int) -> list[dict]:
+        if kind == "movie":
+            data = await self._get("/providers/movies", radarrid=item_id)
+        else:
+            data = await self._get("/providers/episodes", episodeid=item_id)
+        return (data or {}).get("data", [])
+
+    async def episode(self, episode_id: int) -> dict | None:
+        data = (await self._get("/episodes", **{"episodeid[]": episode_id}) or {}).get("data", [])
+        return data[0] if data else None
+
+    async def download(self, kind: str, item_id: int, series_id: int | None, c: dict) -> None:
+        form = {
+            "provider": c["provider"],
+            "subtitle": c["subtitle"],
+            "language": c.get("language"),
+            "hi": c.get("hearing_impaired", "False"),
+            "forced": c.get("forced", "False"),
+            "original_format": c.get("original_format", "False"),
+        }
+        if kind == "movie":
+            await self._send("POST", "/providers/movies", {"radarrid": item_id}, form)
+        else:
+            params = {"seriesid": series_id, "episodeid": item_id}
+            await self._send("POST", "/providers/episodes", params, form)
