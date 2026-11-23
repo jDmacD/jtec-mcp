@@ -1,0 +1,9 @@
+# Copy to ~/.config/jtec-mcp/config.toml (or set JTEC_MCP_CONFIG).
+# No secrets here: each service names the environment variable holding its
+# key, which secretspec fills from your provider (see secretspec.toml).
+
+[services.slskd]
+url = "https://slskd.example.lan"
+secret_env = "SLSKD"          # default: service name upper-cased
+key_field = "SLSKD_API_KEY"   # the variable holds JSON; omit for a bare key
+# verify_tls = "/path/to/ca.pem"
