@@ -37,6 +37,11 @@ call, not a dozen requests and a page of JSON.
 | | `jellyfin_playback_check` | Will this film or episode (or a whole season) direct play on the TV? Bitrate, codecs, HDR, audio passthrough and subtitles, with tips such as a better audio track. |
 | [Bazarr](https://www.bazarr.media) | `bazarr_missing` | Films and episodes still missing subtitles, items Bazarr ignores because they have no language profile, and throttled providers. |
 | | `bazarr_subtitle_search`, `bazarr_download_subtitle` | Search the subtitle providers for one film or episode and download a numbered candidate. |
+| [OPNsense](https://opnsense.org) (firewall, DNS, DHCP) | `opnsense_dns_check` | Would Unbound's blocklist block these domains, and which list and policy. |
+| | `opnsense_dns_queries` | What one device looked up, grouped by domain, blocked first: did the blocklist get in the way, or is the device resolving elsewhere (VPN, web filter, DoH)? |
+| | `opnsense_client` | Find a device by IP, MAC or hostname: its DHCP lease and vendor, reservation and DNS host overrides. |
+| | `opnsense_firewall_log` | Recent firewall-log entries for a device grouped into flows, telling refused new connections apart from harmless out-of-state packets. |
+| | `opnsense_pin_host` | Give a device a fixed address and `.lan` name (DHCP reservation plus DNS override with PTR); dry run by default. |
 
 More services are planned; each one only appears if you configure it.
 
@@ -115,6 +120,22 @@ environment variables. That means:
 
 To use different key names, copy `secretspec.toml`, change the `ref` entries,
 and set `JTEC_MCP_SECRETSPEC` to your copy.
+
+### An OPNsense API user
+
+Create a separate OPNsense user for jtec-mcp (System ▸ Access ▸ Users) with
+no shell or GUI password, give it these privileges, and create an API key for
+it. OPNsense privileges are per page, so they include writing those pages
+(Unbound settings and Kea DHCPv4); there is no read-only variant.
+
+| Privilege | Used by |
+| --- | --- |
+| Services: Unbound (`page-services-unbound`) | blocklist test, query log, host overrides, applying Unbound |
+| Services: DHCP: Kea(v4) (`page-dhcp-kea-v4`) | leases, reservations, subnets, applying Kea |
+| Diagnostics: Logs: Firewall: Live View (`page-diagnostics-logs-firewall-dynamic`) | firewall log |
+
+Store the downloaded `apikey.txt` content (or `{"key": ..., "secret": ...}`)
+as the `OPNSENSE` secret.
 
 ## Contributing
 
