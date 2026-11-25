@@ -13,6 +13,13 @@ from mcp.server.mcpserver import MCPServer
 from mcp_types import ToolAnnotations
 
 from jtec_mcp.aurral.client import AurralClient, album_ref
+from jtec_mcp.aurral.jobs import (
+    ACTIVE,
+    CANCELLABLE,
+    match_album_jobs,
+    order_jobs,
+    summarise_job,
+)
 from jtec_mcp.errors import ToolError
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=False)
@@ -159,12 +166,86 @@ def register(server: MCPServer, client: AurralClient) -> None:
         await client.set_monitored(str(a["id"]), monitored)
         return _compact({"id": a["id"], "title": a.get("title"), "monitored": monitored})
 
+    async def album_or_title(album: str) -> tuple[dict | None, str | None, str | None]:
+        """(library album or None, release-group MBID, title) for an album
+        reference, or for a plain title when the album isn't in the library."""
+        try:
+            ref = album_ref(album)
+        except ToolError:
+            return None, None, album
+        try:
+            a = await client.album(ref)
+        except ToolError as e:
+            if "404" not in str(e) or ref.isdigit():
+                raise
+            return None, ref, None  # an MBID whose album row is gone
+        return a, a.get("releaseGroupMbid"), a.get("title")
+
+    @server.tool(annotations=READ_ONLY, structured_output=False)
+    async def aurral_album_jobs(
+        album: str, artist: str | None = None, active_only: bool = False
+    ) -> str:
+        """List Aurral's download jobs for one album, with each job's source
+        and Soulseek peer: the way to see where an album's files came from, or
+        whether it is being pieced together track by track from many peers.
+
+        `album` is a library id, a release-group MBID, an Aurral album URL, or
+        an album title (for jobs whose album is no longer in the library).
+        Jobs match by release-group MBID or by album title (case- and
+        curly-quote-insensitive); `artist` narrows a title match. A box set or
+        compilation containing the album is a different album, with its own
+        title and MBID. Active jobs come first; `active_only` drops finished
+        ones.
+        """
+        a, rg, title = await album_or_title(album)
+        found = match_album_jobs(await client.jobs(), rg, title, artist)
+        if active_only:
+            found = [j for j in found if j.get("status") in ACTIVE]
+        found = order_jobs(found)
+        return _compact(
+            {
+                "album_id": a["id"] if a else None,
+                "title": title,
+                "release_group": rg,
+                "counts": dict(Counter(j.get("status") for j in found)),
+                "peers": len({j["remoteUsername"] for j in found if j.get("remoteUsername")}),
+                "jobs": [summarise_job(j) for j in found],
+            }
+        )
+
     @server.tool(annotations=CANCEL, structured_output=False)
-    async def aurral_cancel_album_downloads(album: str) -> str:
-        """Cancel Aurral's queued and running downloads for an album."""
-        a = await resolve(album)
-        result = await client.cancel(str(a["id"]))
-        return _compact({"id": a["id"], "title": a.get("title"), "result": result})
+    async def aurral_cancel_album_downloads(album: str, artist: str | None = None) -> str:
+        """Cancel Aurral's queued and running downloads for an album.
+
+        Runs Aurral's album cancel, then cancels every remaining pending or
+        downloading job that matches the album (as in aurral_album_jobs).
+        The album cancel misses jobs no longer linked to the album's tracks,
+        such as old request jobs, which otherwise keep re-downloading files.
+        `album` is a library id, MBID, album URL or title. Unmonitor the album
+        too, or Aurral queues the gaps again. "blocked" jobs (held for review)
+        can't be cancelled and are reported as left.
+        """
+        a, rg, title = await album_or_title(album)
+        album_result = await client.cancel(str(a["id"])) if a else None
+        active = [j for s in sorted(CANCELLABLE) for j in await client.jobs(s)]
+        cancelled, failed = [], []
+        for job in match_album_jobs(active, rg, title, artist):
+            try:
+                await client.cancel_job(job["id"])
+                cancelled.append(job["id"])
+            except ToolError as e:
+                failed.append({"id": job["id"], "error": str(e)})
+        left = match_album_jobs(await client.jobs("blocked"), rg, title, artist)
+        return _compact(
+            {
+                "album_id": a["id"] if a else None,
+                "title": title,
+                "album_cancel": album_result,
+                "jobs_cancelled": cancelled,
+                "failed": failed,
+                "blocked_left": [summarise_job(j) for j in left],
+            }
+        )
 
     @server.tool(annotations=CHANGE, structured_output=False)
     async def aurral_set_edition(album: str, release_mbid: str) -> str:

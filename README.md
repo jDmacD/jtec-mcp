@@ -21,8 +21,9 @@ call, not a dozen requests and a page of JSON.
 | | `slskd_reply`, `slskd_acknowledge` | Answer a peer's message (e.g. an anti-bot question), or mark it read. |
 | [Aurral](https://github.com/lklynet/aurral) (music library) | `aurral_album` | One album at a glance (by id, MusicBrainz ID or album link): what's missing, which folders hold its files, and other albums with the same title, the signs of a mixed or split album. |
 | | `aurral_import_folder` | Bring a downloaded folder into the library (hardlinked by default); checks only, unless told to go ahead. |
+| | `aurral_album_jobs` | An album's download jobs with each one's source and Soulseek peer: whether it's being pieced together from many peers, and what's still running or blocked. |
 | | `aurral_search` | Find artists and albums (with their MusicBrainz IDs) and whether they're already in the library. |
-| | `aurral_set_monitored`, `aurral_set_edition`, `aurral_cancel_album_downloads`, `aurral_refresh` | The steps around an import: pause monitoring, pick the edition, stop Aurral's own downloads, rescan. |
+| | `aurral_set_monitored`, `aurral_set_edition`, `aurral_cancel_album_downloads`, `aurral_refresh` | The steps around an import: pause monitoring, pick the edition, stop Aurral's own downloads (including old jobs the album cancel misses), rescan. |
 | MusicBrainz (via [Lidarr's metadata server](https://api.lidarr.audio), no key) | `metadata_album` | An album's editions and track list with durations: the titles to search Soulseek for, and the edition a downloaded copy matches. |
 | [Sonarr](https://sonarr.tv), [Radarr](https://radarr.video), Lidarr, Prowlarr, Whisparr, Chaptarr | `arr_status` | Version, health warnings, queue counts and free space, for one app or all of them: the check after an upgrade. |
 | | `arr_queue` | What's downloading, with each download's state in qBittorrent alongside; stalled torrents get a swarm check (e.g. everyone stuck at 64% behind a seed that never sends). |
