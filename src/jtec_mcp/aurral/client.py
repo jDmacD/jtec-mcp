@@ -95,6 +95,9 @@ class AurralClient:
             "items"
         ]
 
+    async def artist(self, mbid: str) -> dict:
+        return await self._request("GET", f"/artists/{mbid}")
+
     async def refresh(self, album_id: str | None = None, artist_id: str | None = None) -> dict:
         body: dict = {"mode": "quick"}
         # Aurral rejects ids sent as strings.
