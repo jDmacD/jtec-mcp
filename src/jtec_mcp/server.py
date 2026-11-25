@@ -13,7 +13,7 @@ log = logging.getLogger("jtec_mcp")
 
 INSTRUCTIONS = """\
 Workflow-level tools for self-hosted homelab services. Tools are prefixed by
-service (slskd_, arr_, jellyfin_, ...); only services configured on this host
+service (slskd_, arr_, jellyfin_, opnsense_, ...); only services configured on this host
 are present.
 Results are summarised; ask for detail with the tools' optional arguments.
 """
@@ -26,6 +26,7 @@ def _services() -> dict:
     from jtec_mcp.bazarr.client import BazarrClient
     from jtec_mcp.jellyfin.client import JellyfinClient
     from jtec_mcp.metadata.client import MetadataClient
+    from jtec_mcp.opnsense.client import OpnsenseClient
     from jtec_mcp.qbittorrent.client import QbittorrentClient
     from jtec_mcp.slskd.client import SlskdClient
 
@@ -36,6 +37,7 @@ def _services() -> dict:
         "jellyfin": (JellyfinClient, True),
         "bazarr": (BazarrClient, True),
         "qbittorrent": (QbittorrentClient, True),
+        "opnsense": (OpnsenseClient, True),
         **{app: (ArrClient, True) for app in APPS},
     }
 
@@ -49,6 +51,7 @@ def _register(server: MCPServer, clients: dict) -> None:
     from jtec_mcp.bazarr.tools import register as register_bazarr
     from jtec_mcp.jellyfin.tools import register as register_jellyfin
     from jtec_mcp.metadata.tools import register as register_metadata
+    from jtec_mcp.opnsense.tools import register as register_opnsense
     from jtec_mcp.qbittorrent.tools import register as register_qbittorrent
     from jtec_mcp.slskd.tools import register as register_slskd
 
@@ -59,6 +62,7 @@ def _register(server: MCPServer, clients: dict) -> None:
         "jellyfin": register_jellyfin,
         "bazarr": register_bazarr,
         "qbittorrent": register_qbittorrent,
+        "opnsense": register_opnsense,
     }
     for name, register in single.items():
         if name in clients:

@@ -37,3 +37,9 @@ key_field = "apiKey"   # if the secret is JSON; omit for a bare key
 
 [services.bazarr]
 url = "https://bazarr.example.lan"
+
+[services.opnsense]
+# The secret holds both the API key and its secret (JSON {"key", "secret"},
+# "key:secret", or the apikey.txt OPNsense offers); no key_field.
+# Give the key's user only the privileges the tools need (see README).
+url = "https://opnsense.example.lan"
