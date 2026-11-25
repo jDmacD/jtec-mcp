@@ -79,6 +79,15 @@ class AurralClient:
     async def cancel(self, album_id: str) -> dict:
         return await self._request("POST", f"/albums/{album_id}/cancel")
 
+    async def jobs(self, status: str | None = None) -> list[dict]:
+        """Download jobs (/api/playlists/jobs), all or one status."""
+        return await self._api(
+            "GET", "/playlists/jobs", params={"status": status} if status else {}
+        )
+
+    async def cancel_job(self, job_id: str) -> dict:
+        return await self._api("POST", f"/playlists/jobs/{job_id}/cancel")
+
     async def ingest_check(self, source_path: str) -> dict:
         return await self._request("POST", "/files/ingest/check", json={"sourcePath": source_path})
 
