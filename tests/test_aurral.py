@@ -11,6 +11,7 @@ from jtec_mcp.errors import ToolError
 
 SVC = ServiceConfig("aurral", "https://aurral.test", "AURRAL")
 RG = "1346c819-d57b-4c38-aa55-1e599dfc3645"
+ARTIST = "0f9c6a2e-1d3b-4c5e-8a7f-2b4d6e8f0a1c"
 
 
 @pytest.fixture
@@ -92,6 +93,8 @@ class FakeAurral:
                     ]
                 },
             )
+        if m == "GET" and p == f"/artists/{ARTIST}":
+            return httpx.Response(200, json={"id": 7, "foreignArtistId": ARTIST})
         if p == "/refresh":
             return httpx.Response(202, json={"queued": True, "jobId": 5})
         if p == "/refresh/5":
@@ -161,6 +164,14 @@ async def test_refresh_sends_numeric_id_and_waits():
     (refresh,) = fake.find("POST", "/refresh")
     assert json.loads(refresh.content) == {"mode": "quick", "albumId": 1}
     assert out == {"job": 5, "status": "completed"}
+
+
+@pytest.mark.anyio
+async def test_refresh_resolves_artist_mbid():
+    fake = FakeAurral()
+    await _call(await _server(fake), "aurral_refresh", artist_id=ARTIST.upper())
+    (refresh,) = fake.find("POST", "/refresh")
+    assert json.loads(refresh.content) == {"mode": "quick", "artistId": 7}
 
 
 @pytest.mark.anyio

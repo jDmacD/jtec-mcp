@@ -240,10 +240,14 @@ def register(server: MCPServer, client: AurralClient) -> None:
     ) -> str:
         """Rescan an album's (or an artist's) files so Aurral picks up changes made
         outside it: tags written, files moved or removed. Waits up to `wait_s` for
-        the scan to finish."""
+        the scan to finish.
+
+        `artist_id` is the artist's library id or MusicBrainz artist id."""
         if not album and not artist_id:
             raise ToolError("pass album or artist_id")
         album_id = str((await resolve(album))["id"]) if album else None
+        if artist_id and not album_id and not str(artist_id).isdigit():
+            artist_id = str((await client.artist(str(artist_id).lower()))["id"])
         job = await client.refresh(album_id=album_id, artist_id=artist_id)
         status = await _wait_refresh(client, job.get("jobId"), wait_s) if wait_s > 0 else "queued"
         return _compact({"job": job.get("jobId"), "status": status})
