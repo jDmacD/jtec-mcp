@@ -161,6 +161,11 @@ class ArrClient:
     async def command_status(self, command_id: int) -> dict:
         return await self.get(f"/command/{command_id}")
 
+    async def manual_import(self, folder: str) -> list[dict]:
+        """What the app would import from `folder`: one candidate per file,
+        with its matched item, quality and rejections. Changes nothing."""
+        return await self.get("/manualimport", folder=folder, filterExistingFiles="false")
+
     async def episodes(self, series_id: int) -> list[dict]:
         return await self.get("/episode", seriesId=series_id)
 

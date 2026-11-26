@@ -26,6 +26,8 @@ src/jtec_mcp/
   qbittorrent/      WebAPI client (Bearer key); swarm.py: pure torrent summary + stall diagnosis
   jellyfin/         sessions; playback.py: pure direct-play prediction per client profile
   bazarr/           missing subtitles and unmanaged (profile-less) items
+  filebrowser/      FileBrowser Quantum: files_* (sources, search, list, upload); also
+                    chaptarr_import_file's drop folder (arr/chaptarr_import.py)
   errors.py         ToolError + check(): service error messages reach the agent
 secretspec.toml     secrets the server reads (all optional)
 flake.nix           uv2nix package + dev shell; wraps the server in `secretspec run`
