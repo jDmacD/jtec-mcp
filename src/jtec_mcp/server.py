@@ -24,6 +24,7 @@ def _services() -> dict:
     from jtec_mcp.arr.client import APPS, ArrClient
     from jtec_mcp.aurral.client import AurralClient
     from jtec_mcp.bazarr.client import BazarrClient
+    from jtec_mcp.filebrowser.client import FilebrowserClient
     from jtec_mcp.jellyfin.client import JellyfinClient
     from jtec_mcp.metadata.client import MetadataClient
     from jtec_mcp.opnsense.client import OpnsenseClient
@@ -38,13 +39,16 @@ def _services() -> dict:
         "bazarr": (BazarrClient, True),
         "qbittorrent": (QbittorrentClient, True),
         "opnsense": (OpnsenseClient, True),
+        "filebrowser": (FilebrowserClient, True),
         **{app: (ArrClient, True) for app in APPS},
     }
 
 
 def _register(server: MCPServer, clients: dict) -> None:
     """Add each service's tools. Most take their own client; the Servarr tools
-    take every configured app at once, plus qBittorrent to join queues with."""
+    take every configured app at once, plus qBittorrent to join queues with.
+    FileBrowser has no tools of its own: it is Chaptarr's drop folder."""
+    from jtec_mcp.arr.chaptarr_import import register as register_chaptarr_import
     from jtec_mcp.arr.client import APPS
     from jtec_mcp.arr.tools import register as register_arr
     from jtec_mcp.aurral.tools import register as register_aurral
@@ -69,6 +73,8 @@ def _register(server: MCPServer, clients: dict) -> None:
             register(server, clients[name])
     if arr := {n: clients[n] for n in APPS if n in clients}:
         register_arr(server, arr, clients.get("qbittorrent"))
+    if "chaptarr" in clients and "filebrowser" in clients:
+        register_chaptarr_import(server, clients["chaptarr"], clients["filebrowser"])
 
 
 def build(services: dict[str, config.ServiceConfig] | None = None) -> MCPServer:

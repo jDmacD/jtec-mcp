@@ -31,6 +31,7 @@ call, not a dozen requests and a page of JSON.
 | | `arr_queue_remove` | Remove a stuck or fake download, optionally blocklisting it and searching for a replacement; dry run by default. |
 | | `arr_search` | Search for a series (or one season or episode), film, artist or author. |
 | | `arr_set_monitored` | Monitor or unmonitor items in bulk (Lidarr: their albums too); dry run by default. |
+| Chaptarr + [FileBrowser Quantum](https://github.com/gtsteffaniak/filebrowser) | `chaptarr_import_file` | Hand Chaptarr a book file from this host (e.g. one downloaded by hand): uploads it to a FileBrowser drop folder Chaptarr can see, shows the author, book and edition Chaptarr matches, and imports it; dry run by default. |
 | | `prowlarr_indexers`, `prowlarr_test`, `prowlarr_set_indexer` | Which indexers are failing and since when; test them (which also ends a failure backoff); switch one on or off. |
 | [qBittorrent](https://www.qbittorrent.org) | `qbittorrent_torrent` | Any torrent's state, peers, availability and trackers, with a plain-language diagnosis of why it's stuck. |
 | [Jellyfin](https://jellyfin.org) | `jellyfin_sessions` | What's playing, on which device, and whether it's direct playing or transcoding, and why. |

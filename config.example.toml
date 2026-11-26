@@ -26,6 +26,14 @@ url = "https://radarr.example.lan"
 # [services.lidarr], [services.prowlarr], [services.whisparr] and
 # [services.chaptarr] (Readarr-compatible) work the same way.
 
+[services.filebrowser]
+# FileBrowser Quantum as Chaptarr's drop folder (chaptarr_import_file). The
+# secret is a bare API token (FileBrowser > Settings > API tokens).
+url = "https://files.example.lan"
+source = "books"                              # the FileBrowser source name
+upload_dir = "/downloads/incoming"            # inside that source
+chaptarr_dir = "/data/books/downloads/incoming"  # the same folder, as Chaptarr sees it
+
 [services.qbittorrent]
 # The WebAPI key (qBittorrent 5.2+). With qBittorrent configured, arr_queue
 # shows each download's torrent state and diagnoses stalled swarms.

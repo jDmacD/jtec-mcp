@@ -8,6 +8,9 @@ object, the field inside it that is the API key.
     url = "https://slskd.example.lan"
     secret_env = "SLSKD"          # default: the service name, upper-cased
     key_field = "SLSKD_API_KEY"   # omit if the variable is the bare key
+
+Any other keys in a service's table are service-specific options
+(`ServiceConfig.options`), e.g. FileBrowser's upload folder.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from __future__ import annotations
 import json
 import os
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -35,6 +38,7 @@ class ServiceConfig:
     secret_env: str
     key_field: str | None = None
     verify_tls: bool | str = True
+    options: dict = field(default_factory=dict, compare=False, hash=False)
 
     def api_key(self) -> str | None:
         """Return the API key, or None if the secret isn't set."""
@@ -55,6 +59,9 @@ class ServiceConfig:
         return str(value)
 
 
+_KNOWN = {"url", "secret_env", "key_field", "verify_tls"}
+
+
 def load(path: str | Path | None = None) -> dict[str, ServiceConfig]:
     path = Path(path or os.environ.get("JTEC_MCP_CONFIG") or default_path())
     if not path.exists():
@@ -70,5 +77,6 @@ def load(path: str | Path | None = None) -> dict[str, ServiceConfig]:
             secret_env=s.get("secret_env", name.upper()),
             key_field=s.get("key_field"),
             verify_tls=s.get("verify_tls", True),
+            options={k: v for k, v in s.items() if k not in _KNOWN},
         )
     return services
