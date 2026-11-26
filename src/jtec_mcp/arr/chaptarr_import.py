@@ -103,7 +103,9 @@ def register(server: MCPServer, chaptarr: ArrClient, fb: FilebrowserClient) -> N
     chaptarr_dir = "/" + str(chaptarr_dir).strip("/")
 
     @server.tool(annotations=IMPORT, structured_output=False)
-    async def chaptarr_import_file(file: str, dry_run: bool = True, wait_s: int = 60) -> str:
+    async def chaptarr_import_file(
+        file: str, dry_run: bool = True, replace_existing: bool = False, wait_s: int = 60
+    ) -> str:
         """Import a book file from this host into Chaptarr.
 
         Uploads `file` (a local path, e.g. a zlib download) to the FileBrowser
@@ -119,6 +121,12 @@ def register(server: MCPServer, chaptarr: ArrClient, fb: FilebrowserClient) -> N
         passes it on as usual; waits up to `wait_s` for the command. Unmatched
         or rejected files are left in the drop folder; fix the book in
         Chaptarr (or import by hand in its UI) and try again.
+
+        A book that already has a file (`has_files` in the match) keeps it
+        unless `replace_existing=true`, which has Chaptarr delete the old
+        file(s) when it imports the new one (e.g. a better copy of a poor
+        scan). With no recycle bin set in Chaptarr, that deletion is
+        permanent. Copies already passed on to Calibre-Web are not touched.
         """
         path = Path(file).expanduser()
         if not path.is_file():
@@ -141,6 +149,8 @@ def register(server: MCPServer, chaptarr: ArrClient, fb: FilebrowserClient) -> N
         problems = _problems(candidate)
         if problems:
             out["problems"] = problems
+        if out["match"].get("book", {}).get("has_files"):
+            out["existing_files"] = "replaced" if replace_existing else "kept alongside"
         if dry_run or problems:
             out["imported"] = False
             out["would_import"] = not problems
@@ -150,7 +160,7 @@ def register(server: MCPServer, chaptarr: ArrClient, fb: FilebrowserClient) -> N
             "ManualImport",
             files=[_file_entry(candidate)],
             importMode="move",
-            replaceExistingFiles=False,
+            replaceExistingFiles=replace_existing,
         )
         out["command"] = await _wait_command(chaptarr, cmd, wait_s)
         out["imported"] = out["command"]["status"] == "completed"

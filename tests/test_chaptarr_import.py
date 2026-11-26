@@ -200,3 +200,11 @@ def test_service_options_come_from_extra_keys(tmp_path):
     fb = load(p)["filebrowser"]
     assert fb.url == "https://files.test"
     assert fb.options == {"source": "books", "upload_dir": "/in", "chaptarr_dir": "/data/in"}
+
+
+@pytest.mark.anyio
+async def test_replace_existing_is_passed_through(book):
+    fake = Fake()
+    _, out = await call(build(fake), file=str(book), dry_run=False, replace_existing=True, wait_s=0)
+    (cmd,) = fake.commands
+    assert cmd["replaceExistingFiles"] is True and out["imported"] is True
