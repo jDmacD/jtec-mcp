@@ -138,7 +138,8 @@ def register(server: MCPServer, clients: dict[str, ArrClient], entry) -> None:
         unmonitors the artists' albums and sets "monitor new albums" to none;
         albums keep their own flag, so an unmonitored artist with monitored
         albums still gets searched. Not available for Chaptarr, which
-        monitors ebooks and audiobooks separately.
+        monitors ebooks and audiobooks separately; use
+        chaptarr_set_book_monitored.
         """
         c = get(app, editable)
         if not item_ids and not all_items:
