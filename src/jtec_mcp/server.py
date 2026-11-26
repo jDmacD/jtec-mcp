@@ -48,6 +48,7 @@ def _register(server: MCPServer, clients: dict) -> None:
     """Add each service's tools. Most take their own client; the Servarr tools
     take every configured app at once, plus qBittorrent to join queues with.
     FileBrowser has its own files_* tools and is also Chaptarr's drop folder."""
+    from jtec_mcp.arr.chaptarr_books import register as register_chaptarr_books
     from jtec_mcp.arr.chaptarr_import import register as register_chaptarr_import
     from jtec_mcp.arr.client import APPS
     from jtec_mcp.arr.tools import register as register_arr
@@ -75,6 +76,8 @@ def _register(server: MCPServer, clients: dict) -> None:
             register(server, clients[name])
     if arr := {n: clients[n] for n in APPS if n in clients}:
         register_arr(server, arr, clients.get("qbittorrent"))
+    if "chaptarr" in clients:
+        register_chaptarr_books(server, clients["chaptarr"])
     if "chaptarr" in clients and "filebrowser" in clients:
         register_chaptarr_import(server, clients["chaptarr"], clients["filebrowser"])
 
