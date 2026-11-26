@@ -14,7 +14,6 @@ same folder:
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from pathlib import Path, PurePosixPath
 
@@ -128,19 +127,7 @@ def register(server: MCPServer, chaptarr: ArrClient, fb: FilebrowserClient) -> N
         if size > MAX_BYTES:
             raise ToolError(f"{path.name} is {size} bytes; that isn't one book")
 
-        data = path.read_bytes()
-        dest = fb.upload_path(path.name)
-        existing = await fb.sha256(dest)
-        if existing is None:
-            await fb.upload(dest, data)
-            uploaded = "uploaded"
-        elif existing == hashlib.sha256(data).hexdigest():
-            uploaded = "already there"
-        else:
-            raise ToolError(
-                f"{dest} already exists with different contents; "
-                "rename the file or remove the old one"
-            )
+        uploaded = await fb.put(path, fb.upload_path(path.name))
 
         seen = str(PurePosixPath(chaptarr_dir) / path.name)
         candidates = await chaptarr.manual_import(chaptarr_dir)

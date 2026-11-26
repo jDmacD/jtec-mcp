@@ -70,6 +70,7 @@ class Fake:
                     200,
                     json={"name": "x", "size": 4096, "checksums": {"sha256": self.existing_sha}},
                 )
+            request.read()  # uploads are streamed
             self.uploads.append(request)
             return httpx.Response(200)
         assert host == "chaptarr.test"
